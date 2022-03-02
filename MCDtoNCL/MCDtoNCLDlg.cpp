@@ -14,6 +14,7 @@
 #include <vector>
 #include <algorithm>
 
+using namespace std;
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -178,7 +179,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 	// TODO: Add your control notification handler code here
 	try
 	{
-		CFileDialog cFileDialog(true, NULL, NULL, NULL, _T("mpf-files (*.mpf)|*.mpf;|text-files(*.txt)|*.txt;|tape-files(*.tape)|*.tape;|nc-files(*.nc)|*.nc;|h-files(*.h)|*.h;|All-files(*.*)|*.*;|"));
+		CFileDialog cFileDialog(true, NULL, NULL, NULL, _T("h-files(*.h)|*.h;|All-files(*.*)|*.*;|"));
 
 		int iId;
 		iId = (int)cFileDialog.DoModal();
@@ -211,6 +212,10 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 					{
 						break;
 					}
+					if (sLine.Find(_T("TNC"))!=-1) {
+						openSubprogram(sLine);
+						// TEST m_LIST_MESSAGES.InsertString(0, sLine);
+					}
 					m_sFilecontent.Add(sLine);
 				}
 				theApp.ArrToVal(m_sFilecontent, sFilecontent);
@@ -235,4 +240,32 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 	{
 		m_LIST_MESSAGES.InsertString(0, _T("Invalid file"));
 	}
+}
+
+
+void CMCDtoNCLDlg::openSubprogram(CString path) {
+
+	//path = "CALL PGM TNC : \\1601\\1601303";
+	//string sPath((LPCTSTR)path);
+	CString newPathNameReversed=_T("");
+
+	if (path.Find(_T("TNC"))!=-1) {
+		for (int i = path.GetLength()-1; i > 0; i--) {
+			if (path.GetAt(i) == '\\') {
+				break;
+			}
+			newPathNameReversed.AppendChar(path.GetAt(i));
+		}
+		CString	newPathName = _T("");
+		for (int i = newPathNameReversed.GetLength()-1; i > 0; i--) {
+			newPathName.AppendChar(newPathNameReversed.GetAt(i));
+		}
+		newPathName.Append(_T(".h"));
+
+		m_LIST_MESSAGES.InsertString(0, newPathName);
+
+
+	}
+	
+		
 }

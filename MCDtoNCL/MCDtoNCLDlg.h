@@ -42,4 +42,5 @@ private:
 	CString     g_sFilePath;
 	CStringArray m_sFilecontent;
 	CString     m_FILE_NAME;
+	void openSubprogram(CString path);
 };
