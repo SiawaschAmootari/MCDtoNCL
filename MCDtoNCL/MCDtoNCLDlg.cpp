@@ -264,7 +264,7 @@ void CMCDtoNCLDlg::openSubprogram(CString path) {
 
 		m_LIST_MESSAGES.InsertString(0, newPathName);
 
-
+		//FULLPATHNAME CHANGE
 	}
 	
 		
