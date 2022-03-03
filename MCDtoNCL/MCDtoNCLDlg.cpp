@@ -78,6 +78,7 @@ BEGIN_MESSAGE_MAP(CMCDtoNCLDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BUTTON_OPEN_PATH, &CMCDtoNCLDlg::OnBnClickedButtonOpenPath)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN_NEW_FILE, &CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile)
+	ON_BN_CLICKED(IDC_BUTTON_SAVE, &CMCDtoNCLDlg::OnBnClickedButtonSave)
 END_MESSAGE_MAP()
 
 
@@ -213,10 +214,13 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 						break;
 					}
 					if (sLine.Find(_T("TNC"))!=-1) {
-						openSubprogram(sLine);
+						m_sFilecontent.Add(sLine);
+						findSubprogramPathName(sLine);
 						// TEST m_LIST_MESSAGES.InsertString(0, sLine);
 					}
-					m_sFilecontent.Add(sLine);
+					else {
+						m_sFilecontent.Add(sLine);
+					}
 				}
 				theApp.ArrToVal(m_sFilecontent, sFilecontent);
 				m_EDIT_FILE_INPUT.SetWindowText(sFilecontent);
@@ -243,7 +247,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 }
 
 
-void CMCDtoNCLDlg::openSubprogram(CString path) {
+void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
 
 	//path = "CALL PGM TNC : \\1601\\1601303";
 	//string sPath((LPCTSTR)path);
@@ -262,10 +266,90 @@ void CMCDtoNCLDlg::openSubprogram(CString path) {
 		}
 		newPathName.Append(_T(".h"));
 
-		m_LIST_MESSAGES.InsertString(0, newPathName);
+		//m_LIST_MESSAGES.InsertString(0, newPathName);
+		//m_LIST_MESSAGES.InsertString(0, g_sFilePath);
 
-		//FULLPATHNAME CHANGE
+		CString newFilePath = g_sFilePath;
+		for (int i = newFilePath.GetLength() - 1; i > 0; i--) {
+			if (newFilePath.GetAt(i) == '\\') {
+				break;
+			}
+			newFilePath.Delete(i, 1);
+		}
+		newFilePath.Append(newPathName);
+		//m_LIST_MESSAGES.InsertString(0, newFilePath);
+		openSubprogramPathName(newFilePath);
 	}
 	
-		
+}
+
+void CMCDtoNCLDlg::openSubprogramPathName(CString path) {
+	//CString g_sFilePath;
+	CStdioFile csfFile;
+	
+	if (std::ifstream(path).good())
+	{
+		try
+		{
+			csfFile.Open(path, CStdioFile::modeRead);
+
+			CString sLine = _T("");
+			bool bRead;
+			CString sFilecontent = _T("");
+
+
+			while (true)
+			{
+				bRead = csfFile.ReadString(sLine);
+				if (bRead == false)
+				{
+					break;
+				}
+				m_sFilecontent.Add(sLine);
+			}
+			theApp.ArrToVal(m_sFilecontent, sFilecontent);
+			m_EDIT_FILE_INPUT.SetWindowText(sFilecontent);
+			csfFile.Close();
+			
+		}
+		catch (const std::out_of_range& e)
+		{
+			m_LIST_MESSAGES.InsertString(0, _T("No file selected"));
+		}
+		catch (const std::invalid_argument& e)
+		{
+			m_LIST_MESSAGES.InsertString(0, _T("Invalid file"));
+		}
+	}
+	else
+	{
+		m_LIST_MESSAGES.InsertString(0, _T("Error: filepath is wrong"));
+		m_LIST_MESSAGES.InsertString(0, path);
+	}
+}
+
+void CMCDtoNCLDlg::OnBnClickedButtonSave()
+{
+	CFileDialog cFileDialog(false, _T("mpf"), m_FILE_NAME, OFN_OVERWRITEPROMPT, _T("mpf-files (*.mpf)|*.mpf;|text-Files(*.txt)|*.txt;|"));
+	int iId;
+	iId = (int)cFileDialog.DoModal();
+	bool bOk = true;
+	CString m_sSavefile;
+
+	if (iId == IDOK)
+	{
+		m_sSavefile = cFileDialog.GetPathName();
+		CStdioFile file(cFileDialog.GetPathName(), CFile::modeCreate | CFile::modeWrite | CFile::typeText);
+		for (int iIndexM_sFilecontentNew = 0; iIndexM_sFilecontentNew < m_sFilecontent.GetSize(); iIndexM_sFilecontentNew++)
+		{
+			file.WriteString(m_sFilecontent.GetAt(iIndexM_sFilecontentNew).GetString());
+			file.WriteString(_T("\n"));
+		}
+		if (m_sFilecontent.GetSize() <= 0)
+		{
+			m_LIST_MESSAGES.InsertString(0, _T("File is empty!"));
+		}
+		file.Flush();
+		file.Close();
+	}
 }

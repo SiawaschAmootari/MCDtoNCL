@@ -42,5 +42,8 @@ private:
 	CString     g_sFilePath;
 	CStringArray m_sFilecontent;
 	CString     m_FILE_NAME;
-	void openSubprogram(CString path);
+	void findSubprogramPathName(CString path);
+	void openSubprogramPathName(CString path);
+public:
+	afx_msg void OnBnClickedButtonSave();
 };
