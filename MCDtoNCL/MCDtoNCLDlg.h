@@ -47,6 +47,7 @@ private:
 	void openSubprogramPathName(CString path);
 	void foundProgramName(CString line);
 	void foundComment(CString line);
+	void foundCycl(CString line);
 public:
 	afx_msg void OnBnClickedButtonSave();
 //	CEdit m_EDIT_FILE_OUTPUT;

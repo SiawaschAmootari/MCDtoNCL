@@ -218,7 +218,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 						break;
 					}
 					if (sLine.Find(_T("TNC"))!=-1) {
-						m_sFilecontent.Add(sLine);
+						//m_sFilecontent.Add(sLine);
 						findSubprogramPathName(sLine);
 						// TEST m_LIST_MESSAGES.InsertString(0, sLine);
 					}
@@ -297,6 +297,10 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 		else if (m_sFilecontent.GetAt(i).Find(_T(";")) != -1) {
 			foundComment(m_sFilecontent.GetAt(i));
 		}
+		else if (m_sFilecontent.GetAt(i).Find(_T("TOLERANZ")) != -1) {
+			i++;
+			foundCycl(m_sFilecontent.GetAt(i));
+		}
 		else {
 			m_sFileConverted.Add(m_sFilecontent.GetAt(i));
 		}
@@ -329,6 +333,27 @@ void CMCDtoNCLDlg::foundComment(CString line) {
 		}
 		if (line.GetAt(i) == ';') {
 			foundSemicolon = true;
+		}
+	}
+	m_sFileConverted.Add(convertedLine);
+}
+
+void CMCDtoNCLDlg::foundCycl(CString line) {
+	CString convertedLine = _T("PPRINT / TOLERANCE : ");
+	CString reversedLine;
+	bool foundT = false;
+	for (int i = 0; i < line.GetLength(); i++) {
+		if (foundT == true) {
+			if (line.GetAt(i) == ',') {
+				convertedLine.AppendChar('.');
+			}
+			else {
+				convertedLine.AppendChar(line.GetAt(i));
+			}
+			
+		}
+		if (line.GetAt(i) == 'T') {
+			foundT = true;
 		}
 	}
 	m_sFileConverted.Add(convertedLine);
