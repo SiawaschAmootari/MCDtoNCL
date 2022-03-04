@@ -70,6 +70,8 @@ void CMCDtoNCLDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_FILE_INPUT, m_EDIT_FILE_INPUT);
 	//  DDX_Control(pDX, IDC_LIST_MESSAGES, m_LIST_MESSAGES);
 	DDX_Control(pDX, IDC_LIST_MESSAGES, m_LIST_MESSAGES);
+	//  DDX_Control(pDX, IDC_EDIT_FILE_OUTPUT, m_EDIT_FILE_OUTPUT);
+	DDX_Control(pDX, IDC_EDIT_FILE_OUTPUT, m_EDIT_FILE_OUTPUT);
 }
 
 BEGIN_MESSAGE_MAP(CMCDtoNCLDlg, CDialogEx)
@@ -79,6 +81,8 @@ BEGIN_MESSAGE_MAP(CMCDtoNCLDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN_PATH, &CMCDtoNCLDlg::OnBnClickedButtonOpenPath)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN_NEW_FILE, &CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE, &CMCDtoNCLDlg::OnBnClickedButtonSave)
+	ON_BN_CLICKED(IDC_BUTTON_CONVERT, &CMCDtoNCLDlg::OnBnClickedButtonConvert)
+	
 END_MESSAGE_MAP()
 
 
@@ -283,6 +287,53 @@ void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
 	
 }
 
+void CMCDtoNCLDlg::OnBnClickedButtonConvert()
+{
+	CString sFileConverted = _T("");
+	for (int i = 0; i < m_sFilecontent.GetSize(); i++) {
+		if (m_sFilecontent.GetAt(i).Find(_T("BEGIN")) != -1) {
+			foundProgramName(m_sFilecontent.GetAt(i));
+		}
+		else if (m_sFilecontent.GetAt(i).Find(_T(";")) != -1) {
+			foundComment(m_sFilecontent.GetAt(i));
+		}
+		else {
+			m_sFileConverted.Add(m_sFilecontent.GetAt(i));
+		}
+	}
+	theApp.ArrToVal(m_sFileConverted, sFileConverted);
+	m_EDIT_FILE_OUTPUT.SetWindowText(sFileConverted);
+}
+
+void CMCDtoNCLDlg::foundProgramName(CString line) {
+	CStringArray splittLine;
+	CString token = _T("");
+	CString convertedLine = _T("Dateiname: ");
+	int i = 0;
+
+	while (AfxExtractSubString(token, line, i, ' ')) {
+		splittLine.Add(token);
+		i++;
+	}
+	convertedLine.Append(splittLine.GetAt(4));
+	m_sFileConverted.Add(convertedLine);
+}
+
+void CMCDtoNCLDlg::foundComment(CString line) {
+	CString convertedLine = _T("PPRINT / ");
+	bool foundSemicolon = false;
+
+	for (int i = 0; i < line.GetLength(); i++) {
+		if (foundSemicolon == true) {
+			convertedLine.AppendChar(line.GetAt(i));
+		}
+		if (line.GetAt(i) == ';') {
+			foundSemicolon = true;
+		}
+	}
+	m_sFileConverted.Add(convertedLine);
+}
+
 void CMCDtoNCLDlg::openSubprogramPathName(CString path) {
 	//CString g_sFilePath;
 	CStdioFile csfFile;
@@ -353,3 +404,6 @@ void CMCDtoNCLDlg::OnBnClickedButtonSave()
 		file.Close();
 	}
 }
+
+
+

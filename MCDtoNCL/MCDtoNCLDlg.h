@@ -41,9 +41,17 @@ private:
 	CEdit m_EDIT_FILE_INPUT;
 	CString     g_sFilePath;
 	CStringArray m_sFilecontent;
+	CStringArray m_sFileConverted;
 	CString     m_FILE_NAME;
 	void findSubprogramPathName(CString path);
 	void openSubprogramPathName(CString path);
+	void foundProgramName(CString line);
+	void foundComment(CString line);
 public:
 	afx_msg void OnBnClickedButtonSave();
+//	CEdit m_EDIT_FILE_OUTPUT;
+	CEdit m_EDIT_FILE_OUTPUT;
+	afx_msg void OnBnClickedButtonConvert();
+	
+	
 };
