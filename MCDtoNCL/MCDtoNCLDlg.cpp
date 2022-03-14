@@ -340,7 +340,7 @@ void CMCDtoNCLDlg::foundComment(CString line) {
 	}
 	m_sFileConverted.Add(convertedLine);
 }
-
+//
 void CMCDtoNCLDlg::foundMovement(CString line) {
 	CString convertedLine = _T("GOTO / ");
 
