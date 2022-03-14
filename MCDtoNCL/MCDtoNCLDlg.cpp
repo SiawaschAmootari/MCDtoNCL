@@ -300,6 +300,9 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 		else if (m_sFilecontent.GetAt(i).Find(_T("TOLERANZ")) != -1) {
 			i++;
 			foundCycl(m_sFilecontent.GetAt(i));
+		} 
+		else if(m_sFilecontent.GetAt(i).Find(_T("L X"))|| m_sFilecontent.GetAt(i).Find(_T("L Y"))|| m_sFilecontent.GetAt(i).Find(_T("L Z"))) {
+				foundMovement(m_sFilecontent.GetAt(i));
 		}
 		else {
 			m_sFileConverted.Add(m_sFilecontent.GetAt(i));
@@ -335,6 +338,59 @@ void CMCDtoNCLDlg::foundComment(CString line) {
 			foundSemicolon = true;
 		}
 	}
+	m_sFileConverted.Add(convertedLine);
+}
+
+void CMCDtoNCLDlg::foundMovement(CString line) {
+	CString convertedLine = _T("GOTO / ");
+
+	for (int i = 0; i < line.GetLength(); i++) {
+		if (line.GetAt(i) == 'X') {
+			g_x = _T("");
+			for (int j = i+1; j < line.GetLength(); j++) {
+				if (line.GetAt(j) != ' ') {
+					g_x.AppendChar(line.GetAt(j));
+				}
+				else {
+					break;
+				}
+			}
+			g_x.Replace(',', '.');
+			g_x.Append(_T(", "));
+		}
+		else if (line.GetAt(i) == 'Y') {
+			g_y = _T(" ");
+			for (int k = i+1; k < line.GetLength(); k++) {
+				if (line.GetAt(k) != ' ') {
+					g_y.AppendChar(line.GetAt(k));
+				}
+				else {
+					break;
+				}
+			}
+			g_y.Replace(',', '.');
+			g_y.Append(_T(", "));
+		}
+		else if (line.GetAt(i) == 'Z') {
+			g_z = _T(" ");
+			for (int n = i+1; n < line.GetLength(); n++) {
+				if (line.GetAt(n) != ' ') {
+					g_z.AppendChar(line.GetAt(n));
+				}
+				else {
+					break;
+				}
+			}
+			g_z.AppendChar(' ');
+			g_z.Replace(',', '.');
+		}
+	}
+	convertedLine.Append(g_x);
+	convertedLine.Append(g_y);
+	convertedLine.Append(g_z);
+	m_LIST_MESSAGES.InsertString(0,g_x);
+	m_LIST_MESSAGES.InsertString(0,g_y);
+	m_LIST_MESSAGES.InsertString(0,g_z);
 	m_sFileConverted.Add(convertedLine);
 }
 
@@ -429,6 +485,4 @@ void CMCDtoNCLDlg::OnBnClickedButtonSave()
 		file.Close();
 	}
 }
-
-
 
