@@ -43,9 +43,11 @@ private:
 	CStringArray m_sFilecontent;
 	CStringArray m_sFileConverted;
 	CString     m_FILE_NAME;
-	CString g_x=_T("");
-	CString g_y=_T("");
-	CString g_z=_T("");
+
+	CString g_x;
+	CString g_y;
+	CString g_z;
+
 	void findSubprogramPathName(CString path);
 	void openSubprogramPathName(CString path);
 	void foundProgramName(CString line);

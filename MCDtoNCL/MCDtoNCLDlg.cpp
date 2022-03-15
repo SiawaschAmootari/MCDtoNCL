@@ -184,6 +184,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 	// TODO: Add your control notification handler code here
 	try
 	{
+		
 		CFileDialog cFileDialog(true, NULL, NULL, NULL, _T("h-files(*.h)|*.h;|All-files(*.*)|*.*;|"));
 
 		int iId;
@@ -228,6 +229,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 				}
 				theApp.ArrToVal(m_sFilecontent, sFilecontent);
 				m_EDIT_FILE_INPUT.SetWindowText(sFilecontent);
+				
 				file.Close();
 			}
 			if (m_FILE_NAME.GetLength() <= 0)
@@ -289,23 +291,28 @@ void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
 
 void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 {
+	g_x = _T(" +0.0");
+	g_y = _T("+0.0");
+	g_z = _T("+0.0");
 	CString sFileConverted = _T("");
 	for (int i = 0; i < m_sFilecontent.GetSize(); i++) {
-		if (m_sFilecontent.GetAt(i).Find(_T("BEGIN")) != -1) {
-			foundProgramName(m_sFilecontent.GetAt(i));
-		}
-		else if (m_sFilecontent.GetAt(i).Find(_T(";")) != -1) {
-			foundComment(m_sFilecontent.GetAt(i));
-		}
-		else if (m_sFilecontent.GetAt(i).Find(_T("TOLERANZ")) != -1) {
-			i++;
-			foundCycl(m_sFilecontent.GetAt(i));
-		} 
-		else if(m_sFilecontent.GetAt(i).Find(_T("L X"))|| m_sFilecontent.GetAt(i).Find(_T("L Y"))|| m_sFilecontent.GetAt(i).Find(_T("L Z"))) {
+		if (m_sFilecontent.GetAt(i).Find(_T("M91")) == -1) {
+			if (m_sFilecontent.GetAt(i).Find(_T("BEGIN")) != -1) {
+				foundProgramName(m_sFilecontent.GetAt(i));
+			}
+			else if (m_sFilecontent.GetAt(i).Find(_T(";")) != -1) {
+				foundComment(m_sFilecontent.GetAt(i));
+			}
+			else if (m_sFilecontent.GetAt(i).Find(_T("TOLERANZ")) != -1) {
+				i++;
+				foundCycl(m_sFilecontent.GetAt(i));
+			}
+			else if (m_sFilecontent.GetAt(i).Find(_T("L X")) || m_sFilecontent.GetAt(i).Find(_T("L Y")) || m_sFilecontent.GetAt(i).Find(_T("L Z"))) {
 				foundMovement(m_sFilecontent.GetAt(i));
-		}
-		else {
-			m_sFileConverted.Add(m_sFilecontent.GetAt(i));
+			}
+			else {
+				m_sFileConverted.Add(m_sFilecontent.GetAt(i));
+			}
 		}
 	}
 	theApp.ArrToVal(m_sFileConverted, sFileConverted);
@@ -340,58 +347,63 @@ void CMCDtoNCLDlg::foundComment(CString line) {
 	}
 	m_sFileConverted.Add(convertedLine);
 }
-//
-void CMCDtoNCLDlg::foundMovement(CString line) {
-	CString convertedLine = _T("GOTO / ");
 
-	for (int i = 0; i < line.GetLength(); i++) {
-		if (line.GetAt(i) == 'X') {
-			g_x = _T("");
-			for (int j = i+1; j < line.GetLength(); j++) {
-				if (line.GetAt(j) != ' ') {
-					g_x.AppendChar(line.GetAt(j));
+void CMCDtoNCLDlg::foundMovement(CString line) {
+	
+		CString convertedLine = _T("GOTO / ");
+
+		for (int i = 0; i < line.GetLength(); i++) {
+			if (line.GetAt(i) == 'X') {
+				g_x = _T("");
+				for (int j = i + 1; j < line.GetLength(); j++) {
+					if (line.GetAt(j) != ' ') {
+						g_x.AppendChar(line.GetAt(j));
+					}
+					else {
+						break;
+					}
 				}
-				else {
-					break;
-				}
+				g_x.Replace(',', '.');
 			}
-			g_x.Replace(',', '.');
-			g_x.Append(_T(", "));
-		}
-		else if (line.GetAt(i) == 'Y') {
-			g_y = _T(" ");
-			for (int k = i+1; k < line.GetLength(); k++) {
-				if (line.GetAt(k) != ' ') {
-					g_y.AppendChar(line.GetAt(k));
+			else if (line.GetAt(i) == 'Y') {
+				g_y = _T("");
+				for (int k = i + 1; k < line.GetLength(); k++) {
+					if (line.GetAt(k) != ' ') {
+						g_y.AppendChar(line.GetAt(k));
+					}
+					else {
+						break;
+					}
 				}
-				else {
-					break;
-				}
+				g_y.Replace(',', '.');
 			}
-			g_y.Replace(',', '.');
-			g_y.Append(_T(", "));
-		}
-		else if (line.GetAt(i) == 'Z') {
-			g_z = _T(" ");
-			for (int n = i+1; n < line.GetLength(); n++) {
-				if (line.GetAt(n) != ' ') {
-					g_z.AppendChar(line.GetAt(n));
+			else if (line.GetAt(i) == 'Z') {
+				g_z = _T("");
+				for (int n = i + 1; n < line.GetLength(); n++) {
+					if (line.GetAt(n) != ' ') {
+						g_z.AppendChar(line.GetAt(n));
+					}
+					else {
+						break;
+					}
 				}
-				else {
-					break;
-				}
+				g_z.Replace(',', '.');
 			}
-			g_z.AppendChar(' ');
-			g_z.Replace(',', '.');
 		}
-	}
-	convertedLine.Append(g_x);
-	convertedLine.Append(g_y);
-	convertedLine.Append(g_z);
-	m_LIST_MESSAGES.InsertString(0,g_x);
-	m_LIST_MESSAGES.InsertString(0,g_y);
-	m_LIST_MESSAGES.InsertString(0,g_z);
-	m_sFileConverted.Add(convertedLine);
+		
+		convertedLine.Append(g_x);
+		convertedLine.Append(_T(", "));
+		convertedLine.Append(g_y);
+		convertedLine.Append(_T(", "));
+		convertedLine.Append(g_z);
+		//m_LIST_MESSAGES.InsertString(0, g_x);
+		//m_LIST_MESSAGES.InsertString(0, g_y);
+		//m_LIST_MESSAGES.InsertString(0, g_z);
+		if (line.Find(_T("F MAX")) != -1 || line.Find(_T("FMAX")) != -1) {
+			m_sFileConverted.Add(_T("RAPID"));
+		}
+		m_sFileConverted.Add(convertedLine);
+	
 }
 
 void CMCDtoNCLDlg::foundCycl(CString line) {
@@ -485,4 +497,6 @@ void CMCDtoNCLDlg::OnBnClickedButtonSave()
 		file.Close();
 	}
 }
+
+
 

@@ -183,6 +183,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Converter.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MCDtoNCL.h" />
     <ClInclude Include="MCDtoNCLDlg.h" />
@@ -191,6 +192,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Converter.cpp" />
     <ClCompile Include="MCDtoNCL.cpp" />
     <ClCompile Include="MCDtoNCLDlg.cpp" />
     <ClCompile Include="pch.cpp">
