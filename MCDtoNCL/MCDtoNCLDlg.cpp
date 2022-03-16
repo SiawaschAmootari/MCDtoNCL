@@ -13,7 +13,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
-
+#include <thread>
 using namespace std;
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -56,7 +56,6 @@ END_MESSAGE_MAP()
 // CMCDtoNCLDlg dialog
 
 
-
 CMCDtoNCLDlg::CMCDtoNCLDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_MCDTONCL_DIALOG, pParent)
 {
@@ -82,7 +81,6 @@ BEGIN_MESSAGE_MAP(CMCDtoNCLDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_OPEN_NEW_FILE, &CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile)
 	ON_BN_CLICKED(IDC_BUTTON_SAVE, &CMCDtoNCLDlg::OnBnClickedButtonSave)
 	ON_BN_CLICKED(IDC_BUTTON_CONVERT, &CMCDtoNCLDlg::OnBnClickedButtonConvert)
-	
 END_MESSAGE_MAP()
 
 
@@ -255,8 +253,6 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 
 void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
 
-	//path = "CALL PGM TNC : \\1601\\1601303";
-	//string sPath((LPCTSTR)path);
 	CString newPathNameReversed=_T("");
 
 	if (path.Find(_T("TNC"))!=-1) {
@@ -272,9 +268,6 @@ void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
 		}
 		newPathName.Append(_T(".h"));
 
-		//m_LIST_MESSAGES.InsertString(0, newPathName);
-		//m_LIST_MESSAGES.InsertString(0, g_sFilePath);
-
 		CString newFilePath = g_sFilePath;
 		for (int i = newFilePath.GetLength() - 1; i > 0; i--) {
 			if (newFilePath.GetAt(i) == '\\') {
@@ -283,7 +276,6 @@ void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
 			newFilePath.Delete(i, 1);
 		}
 		newFilePath.Append(newPathName);
-		//m_LIST_MESSAGES.InsertString(0, newFilePath);
 		openSubprogramPathName(newFilePath);
 	}
 	
@@ -291,24 +283,31 @@ void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
 
 void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 {
+	//Default Werte für X,Y und Z werden gesetzt für den fall das die erste 
+	//Bewegungszeile ein oder zwei Koordinaten auslässt
 	g_x = _T(" +0.0");
 	g_y = _T("+0.0");
 	g_z = _T("+0.0");
+
 	CString sFileConverted = _T("");
+
 	for (int i = 0; i < m_sFilecontent.GetSize(); i++) {
 		if (m_sFilecontent.GetAt(i).Find(_T("M91")) == -1) {
 			if (m_sFilecontent.GetAt(i).Find(_T("BEGIN")) != -1) {
 				foundProgramName(m_sFilecontent.GetAt(i));
 			}
-			else if (m_sFilecontent.GetAt(i).Find(_T(";")) != -1) {
+			else if (m_sFilecontent.GetAt(i).Find(_T(";")) != -1 && m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) == -1) {
 				foundComment(m_sFilecontent.GetAt(i));
 			}
 			else if (m_sFilecontent.GetAt(i).Find(_T("TOLERANZ")) != -1) {
 				i++;
 				foundCycl(m_sFilecontent.GetAt(i));
 			}
-			else if (m_sFilecontent.GetAt(i).Find(_T("L X")) || m_sFilecontent.GetAt(i).Find(_T("L Y")) || m_sFilecontent.GetAt(i).Find(_T("L Z"))) {
+			else if (m_sFilecontent.GetAt(i).Find(_T("L X")) != -1 || m_sFilecontent.GetAt(i).Find(_T("L Y")) != -1 || m_sFilecontent.GetAt(i).Find(_T("L Z")) != -1) {
 				foundMovement(m_sFilecontent.GetAt(i));
+			}
+			else if (m_sFilecontent.GetAt(i).Find(_T("M8")) != -1 || m_sFilecontent.GetAt(i).Find(_T("M9")) != -1) {
+				foundCooling(m_sFilecontent.GetAt(i));
 			}
 			else {
 				m_sFileConverted.Add(m_sFilecontent.GetAt(i));
@@ -318,6 +317,16 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 	theApp.ArrToVal(m_sFileConverted, sFileConverted);
 	m_EDIT_FILE_OUTPUT.SetWindowText(sFileConverted);
 }
+
+void CMCDtoNCLDlg::foundCooling(CString line) {
+	if (line.Find(_T("M8")) != -1) {
+		m_sFileConverted.Add(_T("COOLNT/ON"));
+	}
+	else  if(line.Find(_T("M9")) != -1){
+		m_sFileConverted.Add(_T("COOLNT/OFF"));
+	}
+}
+
 
 void CMCDtoNCLDlg::foundProgramName(CString line) {
 	CStringArray splittLine;
@@ -335,14 +344,14 @@ void CMCDtoNCLDlg::foundProgramName(CString line) {
 
 void CMCDtoNCLDlg::foundComment(CString line) {
 	CString convertedLine = _T("PPRINT / ");
-	bool foundSemicolon = false;
+	bool foundSemicolonInLine = false;
 
 	for (int i = 0; i < line.GetLength(); i++) {
-		if (foundSemicolon == true) {
+		if (foundSemicolonInLine == true) {
 			convertedLine.AppendChar(line.GetAt(i));
 		}
 		if (line.GetAt(i) == ';') {
-			foundSemicolon = true;
+			foundSemicolonInLine = true;
 		}
 	}
 	m_sFileConverted.Add(convertedLine);
@@ -353,57 +362,48 @@ void CMCDtoNCLDlg::foundMovement(CString line) {
 		CString convertedLine = _T("GOTO / ");
 
 		for (int i = 0; i < line.GetLength(); i++) {
-			if (line.GetAt(i) == 'X') {
-				g_x = _T("");
-				for (int j = i + 1; j < line.GetLength(); j++) {
-					if (line.GetAt(j) != ' ') {
-						g_x.AppendChar(line.GetAt(j));
-					}
-					else {
-						break;
-					}
-				}
-				g_x.Replace(',', '.');
-			}
-			else if (line.GetAt(i) == 'Y') {
-				g_y = _T("");
-				for (int k = i + 1; k < line.GetLength(); k++) {
-					if (line.GetAt(k) != ' ') {
-						g_y.AppendChar(line.GetAt(k));
-					}
-					else {
-						break;
-					}
-				}
-				g_y.Replace(',', '.');
-			}
-			else if (line.GetAt(i) == 'Z') {
-				g_z = _T("");
-				for (int n = i + 1; n < line.GetLength(); n++) {
-					if (line.GetAt(n) != ' ') {
-						g_z.AppendChar(line.GetAt(n));
-					}
-					else {
-						break;
-					}
-				}
-				g_z.Replace(',', '.');
-			}
+			//Refactor fillXYZ
+			fillCoordinates(line, 'X', i, g_x);
+			fillCoordinates(line, 'Y', i, g_y);
+			fillCoordinates(line, 'Z', i, g_z);
 		}
 		
+		addDecimalPlace(g_x);
+		addDecimalPlace(g_y);
+		addDecimalPlace(g_z);
+
 		convertedLine.Append(g_x);
 		convertedLine.Append(_T(", "));
 		convertedLine.Append(g_y);
 		convertedLine.Append(_T(", "));
 		convertedLine.Append(g_z);
-		//m_LIST_MESSAGES.InsertString(0, g_x);
-		//m_LIST_MESSAGES.InsertString(0, g_y);
-		//m_LIST_MESSAGES.InsertString(0, g_z);
+		
 		if (line.Find(_T("F MAX")) != -1 || line.Find(_T("FMAX")) != -1) {
 			m_sFileConverted.Add(_T("RAPID"));
 		}
 		m_sFileConverted.Add(convertedLine);
-	
+
+}
+
+void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_coordinate) {
+	if (line.GetAt(index) == c && (line.GetAt(index + 1) == '+' || line.GetAt(index + 1) == '-')) {
+		g_coordinate = _T("");
+		for (int j = index + 1; j < line.GetLength(); j++) {
+			if (line.GetAt(j) != ' ') {
+				g_coordinate.AppendChar(line.GetAt(j));
+			}
+			else {
+				break;
+			}
+		}
+		g_coordinate.Replace(',', '.');
+	}
+}
+
+void CMCDtoNCLDlg::addDecimalPlace(CString& line) {
+	if (line.Find(_T(".")) == -1) {
+		line.Append(_T(".0"));
+	}
 }
 
 void CMCDtoNCLDlg::foundCycl(CString line) {
@@ -428,7 +428,7 @@ void CMCDtoNCLDlg::foundCycl(CString line) {
 }
 
 void CMCDtoNCLDlg::openSubprogramPathName(CString path) {
-	//CString g_sFilePath;
+	
 	CStdioFile csfFile;
 	
 	if (std::ifstream(path).good())
@@ -484,9 +484,9 @@ void CMCDtoNCLDlg::OnBnClickedButtonSave()
 	{
 		m_sSavefile = cFileDialog.GetPathName();
 		CStdioFile file(cFileDialog.GetPathName(), CFile::modeCreate | CFile::modeWrite | CFile::typeText);
-		for (int iIndexM_sFilecontentNew = 0; iIndexM_sFilecontentNew < m_sFilecontent.GetSize(); iIndexM_sFilecontentNew++)
+		for (int iIndexM_sFilecontentNew = 0; iIndexM_sFilecontentNew < m_sFileConverted.GetSize(); iIndexM_sFilecontentNew++)
 		{
-			file.WriteString(m_sFilecontent.GetAt(iIndexM_sFilecontentNew).GetString());
+			file.WriteString(m_sFileConverted.GetAt(iIndexM_sFilecontentNew).GetString());
 			file.WriteString(_T("\n"));
 		}
 		if (m_sFilecontent.GetSize() <= 0)
@@ -495,6 +495,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonSave()
 		}
 		file.Flush();
 		file.Close();
+		
 	}
 }
 

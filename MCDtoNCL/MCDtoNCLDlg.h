@@ -47,6 +47,7 @@ private:
 	CString g_x;
 	CString g_y;
 	CString g_z;
+	//bool g_cooling;
 
 	void findSubprogramPathName(CString path);
 	void openSubprogramPathName(CString path);
@@ -54,7 +55,12 @@ private:
 	void foundComment(CString line);
 	void foundCycl(CString line);
 	void foundMovement(CString line);
+	void addDecimalPlace(CString& line);
+	void fillCoordinates(CString line, char c, int index, CString& g_coordinate);
+	void foundCooling(CString line);
+	void OpenNewFile();
 public:
+	//CMCDtoNCLDlg();
 	afx_msg void OnBnClickedButtonSave();
 //	CEdit m_EDIT_FILE_OUTPUT;
 	CEdit m_EDIT_FILE_OUTPUT;
