@@ -321,7 +321,9 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 	theApp.ArrToVal(m_sFileConverted, sFileConverted);
 	m_EDIT_FILE_OUTPUT.SetWindowText(sFileConverted);
 }
-
+/*Sucht nach einem dem Anfangs- und Endpunkt eines 
+* Tool Zyklus die punkte werden als startIndex und endIndex gespeichert
+*/
 void CMCDtoNCLDlg::findToolCycle(int index) {
 	CString line;
 	int toolCallCount = 0;
@@ -342,10 +344,6 @@ void CMCDtoNCLDlg::findToolCycle(int index) {
 		}
 		if (toolCallCount == 2) {
 			endIndex = i;
-			line.Format(_T("Starts at %d and end at %d"), startIndex, endIndex);
-			m_LIST_MESSAGES.AddString(m_sFilecontent.GetAt(i));
-			m_LIST_MESSAGES.AddString(line);
-			//findToolCall(m_sFilecontent.GetAt(i));
 			toolCallCount = 0;
 			foundStart = false;
 			break;
@@ -363,23 +361,27 @@ void CMCDtoNCLDlg::findToolCycle(int index) {
 	m_sFileConverted.Add(g_convertedLoadToolLine);
 	m_sFileConverted.Add(g_convertedSpindlLine);
 }
-
+/*Einzelne Information werden für den Tool Zyklus gesammelt und
+* in Globalen Variablen abgespeichert mit denen dann anschließend weitergearbeitet werden
+*/
 void CMCDtoNCLDlg::findToolCall(CString line) {
 	CString toolNameNumber = _T("");
 	CString spindlNumber = _T("");
 	CString compareLine = _T("");
 	bool foundFirstDigit = false;
+	bool firstSpaceAfterDigit = false;
 	bool foundSpindl = false;
 	g_convertedLoadToolLine = _T("");
 
 	for (int i = 0; i < line.GetLength(); i++) {
 		compareLine.AppendChar(line.GetAt(i));
-
-		
+		if (foundFirstDigit == true && line.GetAt(i)==' ') {
+			firstSpaceAfterDigit = true;
+		}
 		if (foundSpindl == true && line.GetAt(i) == ' ') {
 			foundSpindl = false;
 		}
-		if (isdigit(line.GetAt(i)) && compareLine.Find(_T("TOOL CALL")) != -1 && foundSpindl==false) {
+		if (isdigit(line.GetAt(i)) && compareLine.Find(_T("TOOL CALL")) != -1 && firstSpaceAfterDigit == false) {
 			toolNameNumber.AppendChar(line.GetAt(i));
 			foundFirstDigit = true;
 		}
@@ -389,9 +391,7 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 		if (foundSpindl == true && isdigit(line.GetAt(i))) {
 			foundFirstDigit = false;
 			spindlNumber.AppendChar(line.GetAt(i));
-
 		}
-
 	}
 
 	addDecimalPlace(spindlNumber);
@@ -406,11 +406,10 @@ void CMCDtoNCLDlg::foundCooling(CString line) {
 	if (line.Find(_T("M8")) != -1) {
 		m_sFileConverted.Add(_T("COOLNT/ON"));
 	}
-	else  if(line.Find(_T("M9")) != -1){
+	else  if (line.Find(_T("M9")) != -1) {
 		m_sFileConverted.Add(_T("COOLNT/OFF"));
 	}
 }
-
 //Name des Programms wird Ausgegeben
 void CMCDtoNCLDlg::foundProgramName(CString line) {
 	CStringArray splittLine;
@@ -468,7 +467,6 @@ void CMCDtoNCLDlg::foundMovement(CString line) {
 			m_sFileConverted.Add(_T("RAPID"));
 		}
 		m_sFileConverted.Add(convertedLine);
-
 }
 //Methode ermittelt welche Koordinaten ermittelt werden und
 void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_coordinate) {
@@ -491,7 +489,7 @@ void CMCDtoNCLDlg::addDecimalPlace(CString& line) {
 		line.Append(_T(".0"));
 	}
 }
-
+//Toleranz wird ermittelt und ausgegeben
 void CMCDtoNCLDlg::foundCycl(CString line) {
 	CString convertedLine = _T("PPRINT / TOLERANCE : ");
 	CString reversedLine;
@@ -537,7 +535,7 @@ void CMCDtoNCLDlg::openSubprogramPathName(CString path) {
 			theApp.ArrToVal(m_sFilecontent, sFilecontent);
 			m_EDIT_FILE_INPUT.SetWindowText(sFilecontent);
 			csfFile.Close();
-			
+	
 		}
 		catch (const std::out_of_range& e)
 		{
@@ -578,7 +576,6 @@ void CMCDtoNCLDlg::OnBnClickedButtonSave()
 		}
 		file.Flush();
 		file.Close();
-		
 	}
 }
 
