@@ -229,6 +229,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 				m_EDIT_FILE_INPUT.SetWindowText(sFilecontent);
 				
 				file.Close();
+				//findToolCycle();
 			}
 			if (m_FILE_NAME.GetLength() <= 0)
 			{
@@ -249,6 +250,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 		m_LIST_MESSAGES.InsertString(0, _T("Invalid file"));
 	}
 }
+
 
 
 void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
@@ -308,6 +310,8 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 			}
 			else if (m_sFilecontent.GetAt(i).Find(_T("M8")) != -1 || m_sFilecontent.GetAt(i).Find(_T("M9")) != -1) {
 				foundCooling(m_sFilecontent.GetAt(i));
+			}else if (m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) != -1) {
+				findToolCycle(i);
 			}
 			else {
 				m_sFileConverted.Add(m_sFilecontent.GetAt(i));
@@ -318,6 +322,86 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 	m_EDIT_FILE_OUTPUT.SetWindowText(sFileConverted);
 }
 
+void CMCDtoNCLDlg::findToolCycle(int index) {
+	CString line;
+	int toolCallCount = 0;
+	int startIndex = 0;
+	int endIndex = 0;
+	bool foundStart = false;
+	CString clockwiseDirection = _T("");
+
+	for (int i = index; i < m_sFilecontent.GetSize(); i++) {
+		if (m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) != -1) {
+			toolCallCount++;
+		}
+		if (toolCallCount == 1 && foundStart == false) {
+			startIndex = i;
+			foundStart = true;
+			m_LIST_MESSAGES.AddString(m_sFilecontent.GetAt(i));
+			findToolCall(m_sFilecontent.GetAt(i));
+		}
+		if (toolCallCount == 2) {
+			endIndex = i;
+			line.Format(_T("Starts at %d and end at %d"), startIndex, endIndex);
+			m_LIST_MESSAGES.AddString(m_sFilecontent.GetAt(i));
+			m_LIST_MESSAGES.AddString(line);
+			//findToolCall(m_sFilecontent.GetAt(i));
+			toolCallCount = 0;
+			foundStart = false;
+			break;
+		}
+	}
+	for (int i = startIndex; i <= endIndex; i++) {
+		if (m_sFilecontent.GetAt(i).Find(_T("M3")) != -1) {
+			clockwiseDirection = _T(",  CLW");
+		}
+		if (m_sFilecontent.GetAt(i).Find(_T("M4")) != -1) {
+			clockwiseDirection = _T(",  CCLW");
+		}
+	}
+	g_convertedSpindlLine.Append(clockwiseDirection);
+	m_sFileConverted.Add(g_convertedLoadToolLine);
+	m_sFileConverted.Add(g_convertedSpindlLine);
+}
+
+void CMCDtoNCLDlg::findToolCall(CString line) {
+	CString toolNameNumber = _T("");
+	CString spindlNumber = _T("");
+	CString compareLine = _T("");
+	bool foundFirstDigit = false;
+	bool foundSpindl = false;
+	g_convertedLoadToolLine = _T("");
+
+	for (int i = 0; i < line.GetLength(); i++) {
+		compareLine.AppendChar(line.GetAt(i));
+
+		
+		if (foundSpindl == true && line.GetAt(i) == ' ') {
+			foundSpindl = false;
+		}
+		if (isdigit(line.GetAt(i)) && compareLine.Find(_T("TOOL CALL")) != -1 && foundSpindl==false) {
+			toolNameNumber.AppendChar(line.GetAt(i));
+			foundFirstDigit = true;
+		}
+		if (line.GetAt(i) == 'S') {
+			foundSpindl = true;
+		}
+		if (foundSpindl == true && isdigit(line.GetAt(i))) {
+			foundFirstDigit = false;
+			spindlNumber.AppendChar(line.GetAt(i));
+
+		}
+
+	}
+
+	addDecimalPlace(spindlNumber);
+	g_convertedSpindlLine = _T("SPINDL / RPM, ") + spindlNumber;
+	m_LIST_MESSAGES.AddString(g_convertedSpindlLine);
+	g_convertedLoadToolLine = _T("LOADTL / ") + toolNameNumber;
+}
+
+//M8 -> Kühlung wird angeschaltet
+//M9 -> Kühlung wird ausgeschaltet
 void CMCDtoNCLDlg::foundCooling(CString line) {
 	if (line.Find(_T("M8")) != -1) {
 		m_sFileConverted.Add(_T("COOLNT/ON"));
@@ -327,7 +411,7 @@ void CMCDtoNCLDlg::foundCooling(CString line) {
 	}
 }
 
-
+//Name des Programms wird Ausgegeben
 void CMCDtoNCLDlg::foundProgramName(CString line) {
 	CStringArray splittLine;
 	CString token = _T("");
@@ -341,7 +425,7 @@ void CMCDtoNCLDlg::foundProgramName(CString line) {
 	convertedLine.Append(splittLine.GetAt(4));
 	m_sFileConverted.Add(convertedLine);
 }
-
+//;->Kommentar im NCL
 void CMCDtoNCLDlg::foundComment(CString line) {
 	CString convertedLine = _T("PPRINT / ");
 	bool foundSemicolonInLine = false;
@@ -357,6 +441,8 @@ void CMCDtoNCLDlg::foundComment(CString line) {
 	m_sFileConverted.Add(convertedLine);
 }
 
+//Bewegungen der X,Y und Z Koordinaten werden ermittelt und in
+//den Globalen Variablen g_x,g_y und g_z gespeichert
 void CMCDtoNCLDlg::foundMovement(CString line) {
 	
 		CString convertedLine = _T("GOTO / ");
@@ -384,7 +470,7 @@ void CMCDtoNCLDlg::foundMovement(CString line) {
 		m_sFileConverted.Add(convertedLine);
 
 }
-
+//Methode ermittelt welche Koordinaten ermittelt werden und
 void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_coordinate) {
 	if (line.GetAt(index) == c && (line.GetAt(index + 1) == '+' || line.GetAt(index + 1) == '-')) {
 		g_coordinate = _T("");
@@ -399,7 +485,7 @@ void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_c
 		g_coordinate.Replace(',', '.');
 	}
 }
-
+// Fügt den Koordinaten eine Nachkommastelle hinzu , falls diese nicht vorhanden sind
 void CMCDtoNCLDlg::addDecimalPlace(CString& line) {
 	if (line.Find(_T(".")) == -1) {
 		line.Append(_T(".0"));
@@ -426,9 +512,8 @@ void CMCDtoNCLDlg::foundCycl(CString line) {
 	}
 	m_sFileConverted.Add(convertedLine);
 }
-
+//Öffnet die Unterprograme
 void CMCDtoNCLDlg::openSubprogramPathName(CString path) {
-	
 	CStdioFile csfFile;
 	
 	if (std::ifstream(path).good())
@@ -436,11 +521,9 @@ void CMCDtoNCLDlg::openSubprogramPathName(CString path) {
 		try
 		{
 			csfFile.Open(path, CStdioFile::modeRead);
-
 			CString sLine = _T("");
 			bool bRead;
 			CString sFilecontent = _T("");
-
 
 			while (true)
 			{

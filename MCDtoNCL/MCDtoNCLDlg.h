@@ -47,6 +47,9 @@ private:
 	CString g_x;
 	CString g_y;
 	CString g_z;
+	CString g_convertedLoadToolLine;
+	CString g_convertedSpindlLine;
+	
 	//bool g_cooling;
 
 	void findSubprogramPathName(CString path);
@@ -59,6 +62,8 @@ private:
 	void fillCoordinates(CString line, char c, int index, CString& g_coordinate);
 	void foundCooling(CString line);
 	void OpenNewFile();
+	void findToolCycle(int index);
+	void findToolCall(CString line);
 public:
 	//CMCDtoNCLDlg();
 	afx_msg void OnBnClickedButtonSave();
