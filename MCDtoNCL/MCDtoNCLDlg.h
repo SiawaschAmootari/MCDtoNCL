@@ -64,6 +64,7 @@ private:
 	void OpenNewFile();
 	void findToolCycle(int index);
 	void findToolCall(CString line);
+	void findCircle(CString lineCC,CString lineC);
 public:
 	//CMCDtoNCLDlg();
 	afx_msg void OnBnClickedButtonSave();

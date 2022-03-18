@@ -225,8 +225,15 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 						m_sFilecontent.Add(sLine);
 					}
 				}
-				theApp.ArrToVal(m_sFilecontent, sFilecontent);
+				//theApp.ArrToVal(m_sFilecontent, sFilecontent);
+				CStringArray firstHundredLines;
+				for (int i = 0; i < 100; i++) {
+					firstHundredLines.Add(m_sFilecontent.GetAt(i));
+					
+				}
+				theApp.ArrToVal(firstHundredLines, sFilecontent);
 				m_EDIT_FILE_INPUT.SetWindowText(sFilecontent);
+
 				
 				file.Close();
 				//findToolCycle();
@@ -310,8 +317,12 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 			}
 			else if (m_sFilecontent.GetAt(i).Find(_T("M8")) != -1 || m_sFilecontent.GetAt(i).Find(_T("M9")) != -1) {
 				foundCooling(m_sFilecontent.GetAt(i));
-			}else if (m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) != -1) {
+			}else if (m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) != -1 && m_sFilecontent.GetAt(i).Find(_T(";")) != -1) {
 				findToolCycle(i);
+			}
+			else if (m_sFilecontent.GetAt(i).Find(_T("CC")) != -1) {
+				findCircle(m_sFilecontent.GetAt(i), m_sFilecontent.GetAt(i + 1));
+				i++;
 			}
 			else {
 				m_sFileConverted.Add(m_sFilecontent.GetAt(i));
@@ -321,7 +332,8 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 	theApp.ArrToVal(m_sFileConverted, sFileConverted);
 	m_EDIT_FILE_OUTPUT.SetWindowText(sFileConverted);
 }
-/*Sucht nach einem dem Anfangs- und Endpunkt eines 
+
+/*Sucht nach einem dem Anfangs- und Endpunkt eines
 * Tool Zyklus die punkte werden als startIndex und endIndex gespeichert
 */
 void CMCDtoNCLDlg::findToolCycle(int index) {
@@ -438,6 +450,57 @@ void CMCDtoNCLDlg::foundComment(CString line) {
 		}
 	}
 	m_sFileConverted.Add(convertedLine);
+}
+//Kreis gefunden
+void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
+	//Zeile für CC
+	for (int i = 0; i < lineCC.GetLength(); i++) {
+		//Refactor fillXYZ
+		fillCoordinates(lineCC, 'X', i, g_x);
+		fillCoordinates(lineCC, 'Y', i, g_y);
+		
+	}
+
+	addDecimalPlace(g_x);
+	addDecimalPlace(g_y);
+	
+	double ccX = _wtof(g_x);
+	double ccY = _wtof(g_y);
+	//Zeile für C
+	CString lineX = g_x;
+	CString lineY = g_y;
+
+	for (int i = 0; i < lineC.GetLength(); i++) {
+		//Refactor fillXYZ
+		fillCoordinates(lineC, 'X', i, g_x);
+		fillCoordinates(lineC, 'Y', i, g_y);
+		
+	}
+
+	addDecimalPlace(g_x);
+	addDecimalPlace(g_y);
+
+	double cX = _wtof(g_x);
+	double cY = _wtof(g_y);
+	double result = sqrt(((ccX-cX)*(ccX - cX))-((ccY - cY) * (ccY - cY)));//?
+
+	CString rotationDirection;
+	if (lineC.Find(_T("DR+")) != -1) {
+		rotationDirection = _T("1.0");
+	}
+	else if (lineC.Find(_T("DR-")) != -1) {
+		rotationDirection = _T("-1.0");
+	}
+	
+	CString resultString;
+	resultString.Format(_T("%.f"), result);
+	CString convertedLineOne;
+	CString convertedLineTwo;
+	convertedLineOne = _T("CIRCLE / ") +lineX+ _T(", ")+lineY+_T(", ") + g_z+_T(", $");
+	convertedLineTwo = _T("0.0000000000, 0.0000000000, ") + rotationDirection + _T(", ") + resultString;
+	
+	m_sFileConverted.Add(convertedLineOne);
+	m_sFileConverted.Add(convertedLineTwo);
 }
 
 //Bewegungen der X,Y und Z Koordinaten werden ermittelt und in
