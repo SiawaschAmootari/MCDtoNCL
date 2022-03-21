@@ -31,46 +31,45 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
-public:
-	afx_msg void OnBnClickedButtonOpenPath();
-	afx_msg void OnBnClickedButtonOpenNewFile();
 
 private:
 	CListBox m_LIST_MESSAGES;
 	CComboBox m_COMBO_FILE_PATH;
-	CEdit m_EDIT_FILE_INPUT;
-	CString     g_sFilePath;
+
 	CStringArray m_sFilecontent;
 	CStringArray m_sFileConverted;
-	CString     m_FILE_NAME;
+	CStringArray g_conversionHistory;
+
+	CEdit m_EDIT_FILE_OUTPUT;
+	CEdit m_EDIT_FILE_INPUT;
 
 	CString g_x;
 	CString g_y;
 	CString g_z;
 	CString g_convertedLoadToolLine;
 	CString g_convertedSpindlLine;
-	
-	//bool g_cooling;
+	CString g_sFilePath;
+	CString m_FILE_NAME;
 
 	void findSubprogramPathName(CString path);
-	void openSubprogramPathName(CString path);
-	void foundProgramName(CString line);
-	void foundComment(CString line);
-	void foundCycl(CString line);
-	void foundMovement(CString line);
-	void addDecimalPlace(CString& line);
-	void fillCoordinates(CString line, char c, int index, CString& g_coordinate);
-	void foundCooling(CString line);
-	void OpenNewFile();
+	void findProgramName(CString line);
+	void findComment(CString line);
+	void findTolerance(CString line);
+	void findMovement(CString line);
+	void findCooling(CString line);
 	void findToolCycle(int index);
 	void findToolCall(CString line);
 	void findCircle(CString lineCC,CString lineC);
+	
+	void OpenNewFile();
+	void fillCoordinates(CString line, char c, int index, CString& g_coordinate);
+	void addDecimalPlace(CString& line);
+	void openSubprogramPathName(CString path);
+
 public:
-	//CMCDtoNCLDlg();
 	afx_msg void OnBnClickedButtonSave();
-//	CEdit m_EDIT_FILE_OUTPUT;
-	CEdit m_EDIT_FILE_OUTPUT;
 	afx_msg void OnBnClickedButtonConvert();
-	
-	
+	afx_msg void OnBnClickedButtonOpenPath();
+	afx_msg void OnBnClickedButtonOpenNewFile();
+
 };
