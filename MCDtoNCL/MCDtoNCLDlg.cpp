@@ -189,8 +189,10 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 		int iId;
 		iId = (int)cFileDialog.DoModal();
 		bool bOk = true;
+		CFileStatus filestatus;
 		//CString m_sInputfile;
 		CStdioFile file;
+		int fileSize;
 		if (iId == IDOK)
 		{
 			g_sFilePath = cFileDialog.GetPathName();
@@ -264,7 +266,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonOpenNewFile()
 /// Sucht im Hauptprogramm nach den Subporgrammnamen
 /// Der Name wird passend gefiltert und an der Methode openSubprogramPathName geschickt
 /// </summary>
-/// <param name="path">Die Zeile "CALL PGM TNC" wird übergen</param>
+/// @param [path]die Zeile "CALL PGM TNC" wird übergen
 void CMCDtoNCLDlg::findSubprogramPathName(CString path) {
 
 	CString newPathNameReversed=_T("");
@@ -308,9 +310,12 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 	g_x = _T(" +0.0");
 	g_y = _T("+0.0");
 	g_z = _T("+0.0");
-
+	bool foundFirstFeatno = false;
+	CFileStatus fileStatus;
+	//CFile::GetStatus(m_sFilecontent, fileStatus);
+	//m_sFileConverted.SetSize();
 	CString sFileConverted = _T("");
-
+	BeginWaitCursor();
 	for (int i = 0; i < m_sFilecontent.GetSize(); i++) {
 		if (m_sFilecontent.GetAt(i).Find(_T("M91")) == -1) {
 			if (m_sFilecontent.GetAt(i).Find(_T("BEGIN")) != -1) {
@@ -330,19 +335,27 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 			else if (m_sFilecontent.GetAt(i).Find(_T("M8")) != -1 || m_sFilecontent.GetAt(i).Find(_T("M9")) != -1) {
 				findCooling(m_sFilecontent.GetAt(i));
 			}else if (m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) != -1 && m_sFilecontent.GetAt(i).Find(_T(";")) != -1) {
+				if (foundFirstFeatno == true) {
+					m_sFileConverted.Add(_T("$$-> END / "));
+				}
+				m_sFileConverted.Add(_T("$$-> FEATNO / 1"));
 				findToolCycle(i);
+				foundFirstFeatno = true;
 			}
 			else if (m_sFilecontent.GetAt(i).Find(_T("CC")) != -1) {
 				findCircle(m_sFilecontent.GetAt(i), m_sFilecontent.GetAt(i + 1));
 				i++;
 			}
 			else {
-				m_sFileConverted.Add(m_sFilecontent.GetAt(i));
+				m_sFileConverted.Add(_T("PPRINT") + m_sFilecontent.GetAt(i));
 			}
 		}
 	}
+	m_sFileConverted.Add(_T("$$->END /"));
+	m_sFileConverted.Add(_T("FINI"));
 	theApp.ArrToVal(m_sFileConverted, sFileConverted);
 	m_EDIT_FILE_OUTPUT.SetWindowText(sFileConverted);
+	EndWaitCursor();
 }
 
 
@@ -351,7 +364,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 /// Sucht nach einem dem Anfangs- und Endpunkt eines
 ///	Tool Zyklus die punkte werden als startIndex und endIndex gespeichert
 /// </summary>
-/// <param name="index"> Anfangspunkt  des Zyklus </param>
+/// @param "index" Anfangspunkt des Zyklus
 void CMCDtoNCLDlg::findToolCycle(int index) {
 	CString line;
 	int toolCallCount = 0;
@@ -406,7 +419,7 @@ void CMCDtoNCLDlg::findToolCycle(int index) {
 /// Einzelne Information werden für den Tool Zyklus gefiltert, gesammelt und
 /// in Globalen Variablen abgespeichert
 /// </summary>
-/// <param name="line">Enthält die Zeile "TOOL CALL" </param>
+/// @param [line] enthält den Substring "TOOL CALL"
 void CMCDtoNCLDlg::findToolCall(CString line) {
 	CString toolNameNumber = _T("");
 	CString spindlNumber = _T("");
@@ -446,7 +459,7 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 /// <summary>
 /// Die Methode beschäftigt sich mit dem an-und -ausschalten der Kühlung, 
 /// </summary>
-/// <param name="line">Es wird die gefilterte Zeile übergeben die ein M8 oder ein M9 beinhaltet</param>
+/// @param [line] es wird die gefilterte Zeile übergeben die ein M8 oder ein M9 beinhaltet</param>
 void CMCDtoNCLDlg::findCooling(CString line) {
 	if (line.Find(_T("M8")) != -1) {
 		m_sFileConverted.Add(_T("COOLNT/ON"));
@@ -461,7 +474,7 @@ void CMCDtoNCLDlg::findCooling(CString line) {
 /// <summary>
 /// Der Name des Programms wird ermittelt
 /// </summary>
-/// <param name="line">DIe gefilterte Zeile wird an die Methode übergeben</param>
+/// @param [line] enthält den gefilterten String aus dem MCD
 void CMCDtoNCLDlg::findProgramName(CString line) {
 	
 	CStringArray splittLine;
@@ -482,7 +495,7 @@ void CMCDtoNCLDlg::findProgramName(CString line) {
 /// <summary>
 /// Konvertiert Kommentare aus dem MCD 
 /// </summary>
-/// <param name="line">Enthält den gefilterten String</param>
+/// @param [line] enthält den gefilterten String aus dem MCD
 void CMCDtoNCLDlg::findComment(CString line) {
 	CString convertedLine = _T("PPRINT / ");
 	bool foundSemicolonInLine = false;
@@ -502,8 +515,8 @@ void CMCDtoNCLDlg::findComment(CString line) {
 /// <summary>
 /// Konvertiert ein CIRCLE Befehl um. DIeser Befehl besteht aus zwei Zeilen!
 /// </summary>
-/// <param name="lineCC">Die erste Zeile im MCD </param>
-/// <param name="lineC">Die zweite Zeile im MCD</param>
+/// @param [lineCC] die erste Zeile im MCD 
+/// @param [lineC] die zweite Zeile im MCD
 void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 	//Zeile für CC
 	for (int i = 0; i < lineCC.GetLength(); i++) {
@@ -563,7 +576,7 @@ void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 /// In dieser Methode werden die Globalen Variablen g_x,g_y und g_z aktuallisiert.
 /// Die Methode sucht im String nach dem gesuchten Zeichen und befült die Koordinatenvariable neu.
 /// </summary>
-/// <param name="line">Enthölt die gefilterte Zeile aus dem NCL</param>
+/// @param [line] enthält die gefilterte Zeile aus dem NCL
 void CMCDtoNCLDlg::findMovement(CString line) {
 	
 		CString convertedLine = _T("GOTO / ");
@@ -595,10 +608,10 @@ void CMCDtoNCLDlg::findMovement(CString line) {
 /// <summary>
 /// Der Code wurde aus findMovement ausgekoppelt da dieser sich nur wiederholt.
 /// </summary>
-/// <param name="line">Enthält die gesamte NCL Zeile</param>
-/// <param name="c">Das gesuchte Zeichen kann entweder X,Y oder Z sein</param>
-/// <param name="index"> Der Index des Strings an dem die Schleife weiterläuft </param>
-/// <param name="g_coordinate">die Globale Koordinatenvariable g_x,g_y oder g_z</param>
+/// @param [line] enthält die gesamte MCD Zeile
+/// @param [c] das gesuchte Zeichen kann entweder X,Y oder Z sein
+/// @param [index] der Index des Strings an dem die Schleife weiterläuft 
+/// @param [g_coordinate] die Globale Koordinatenvariable g_x,g_y oder g_z
 void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_coordinate) {
 	if (line.GetAt(index) == c && (line.GetAt(index + 1) == '+' || line.GetAt(index + 1) == '-')) {
 		g_coordinate = _T("");
@@ -618,7 +631,7 @@ void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_c
 /// Falls der String keine Nachkommastelle enthält wird hier 
 /// ein .0 am ende des Strings hunzugefügt
 /// </summary>
-/// <param name="line"></param>
+/// @param [line] enthält die gesamte MCD Zeile
 void CMCDtoNCLDlg::addDecimalPlace(CString& line) {
 	if (line.Find(_T(".")) == -1) {
 		line.Append(_T(".0"));
@@ -628,7 +641,7 @@ void CMCDtoNCLDlg::addDecimalPlace(CString& line) {
 /// <summary>
 /// Findet die Toleranz 
 /// </summary>
-/// <param name="line">Enthält die gesamte NCL Zeile</param>
+/// @param [line] enthält die gesamte MCD Zeile 
 void CMCDtoNCLDlg::findTolerance(CString line) {
 	CString convertedLine = _T("PPRINT / TOLERANCE : ");
 	CString reversedLine;
@@ -655,7 +668,7 @@ void CMCDtoNCLDlg::findTolerance(CString line) {
 /// <summary>
 /// Die Methode öffnet die Subprogramme und fügt diese dem m_sFilecontent Array hinzu.
 /// </summary>
-/// <param name="path">Enthält den Pfad des Subprogramms</param>
+/// @param [path]enthält den Pfad des Subprogramms
 void CMCDtoNCLDlg::openSubprogramPathName(CString path) {
 	CStdioFile csfFile;
 	
@@ -713,9 +726,9 @@ void CMCDtoNCLDlg::OnBnClickedButtonSave()
 	{
 		m_sSavefile = cFileDialog.GetPathName();
 		CStdioFile file(cFileDialog.GetPathName(), CFile::modeCreate | CFile::modeWrite | CFile::typeText);
-		for (int iIndexM_sFilecontentNew = 0; iIndexM_sFilecontentNew < g_conversionHistory.GetSize(); iIndexM_sFilecontentNew++)
+		for (int iIndexM_sFilecontentNew = 0; iIndexM_sFilecontentNew < m_sFileConverted.GetSize(); iIndexM_sFilecontentNew++)
 		{
-			file.WriteString(g_conversionHistory.GetAt(iIndexM_sFilecontentNew).GetString());
+			file.WriteString(m_sFileConverted.GetAt(iIndexM_sFilecontentNew).GetString());
 			file.WriteString(_T("\n"));
 		}
 		if (m_sFilecontent.GetSize() <= 0)
@@ -727,5 +740,3 @@ void CMCDtoNCLDlg::OnBnClickedButtonSave()
 	}
 }
 
-
-//void CMCDtoNCLDlg::saveHistory(CString)
