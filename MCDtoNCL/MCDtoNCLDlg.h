@@ -46,6 +46,7 @@ private:
 	CString g_x;
 	CString g_y;
 	CString g_z;
+	CString g_diameter;
 	CString g_convertedLoadToolLine;
 	CString g_convertedSpindlLine;
 	CString g_sFilePath;

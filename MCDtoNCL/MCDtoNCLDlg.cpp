@@ -339,6 +339,10 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 					m_sFileConverted.Add(_T("$$-> END / "));
 				}
 				m_sFileConverted.Add(_T("$$-> FEATNO / 1"));
+				if (foundFirstFeatno == false) {
+					m_sFileConverted.Add(_T("MACHIN / UNCX01, 1")); //	 Wird nur im ersten Zyklus angezeigt
+					m_sFileConverted.Add(_T("UNITS / MM"));        //    ""                             ""
+				}
 				findToolCycle(i);
 				foundFirstFeatno = true;
 			}
@@ -346,8 +350,11 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 				findCircle(m_sFilecontent.GetAt(i), m_sFilecontent.GetAt(i + 1));
 				i++;
 			}
+			else if (m_sFilecontent.GetAt(i).Find(_T("STOP M5")) != -1) {
+				m_sFileConverted.Add(_T("SPINDL / OFF"));
+			}
 			else {
-				m_sFileConverted.Add(_T("PPRINT") + m_sFilecontent.GetAt(i));
+				m_sFileConverted.Add(_T("PPRINT / ??? ") + m_sFilecontent.GetAt(i));
 			}
 		}
 	}
@@ -407,6 +414,10 @@ void CMCDtoNCLDlg::findToolCycle(int index) {
 	}
 	g_convertedSpindlLine.Append(clockwiseDirection);
 	m_sFileConverted.Add(g_convertedLoadToolLine);
+	m_sFileConverted.Add(_T("$$-> CUTTER / ")+g_diameter);
+	m_sFileConverted.Add(_T("$$-> CSYS / 1.0000000000, 0.0000000000, 0.0000000000, 0.0000000000,  $")); // Hardcoded 3 Ax
+	m_sFileConverted.Add(_T("		    0.0000000000, 1.0000000000, 0.0000000000, 0.0000000000,  $")); // ""            ""
+	m_sFileConverted.Add(_T("		    0.0000000000, 0.0000000000, 1.0000000000, 0.0000000000"));	  //  ""			""	
 	m_sFileConverted.Add(g_convertedSpindlLine);
 	g_conversionHistory.Add(_T(" ----> ") + g_convertedLoadToolLine);
 	g_conversionHistory.Add(_T(" ----> ") + g_convertedSpindlLine);
@@ -424,9 +435,11 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 	CString toolNameNumber = _T("");
 	CString spindlNumber = _T("");
 	CString compareLine = _T("");
+	g_diameter = _T("");
 	bool foundFirstDigit = false;
 	bool firstSpaceAfterDigit = false;
 	bool foundSpindl = false;
+	bool foundDiameter = false;
 	g_convertedLoadToolLine = _T("");
 
 	for (int i = 0; i < line.GetLength(); i++) {
@@ -448,9 +461,19 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 			foundFirstDigit = false;
 			spindlNumber.AppendChar(line.GetAt(i));
 		}
+		if (foundDiameter == true&&line.GetAt(i)==' ') {
+			foundDiameter = false;
+		}
+		if (foundDiameter == true) {
+			g_diameter.AppendChar(line.GetAt(i));
+		}
+		if (line.GetAt(i)=='D') {
+			foundDiameter = true;
+		}
 	}
 
 	addDecimalPlace(spindlNumber);
+	addDecimalPlace(g_diameter);
 	g_convertedSpindlLine = _T("SPINDL / RPM, ") + spindlNumber;
 	m_LIST_MESSAGES.AddString(g_convertedSpindlLine);
 	g_convertedLoadToolLine = _T("LOADTL / ") + toolNameNumber;
@@ -479,7 +502,7 @@ void CMCDtoNCLDlg::findProgramName(CString line) {
 	
 	CStringArray splittLine;
 	CString token = _T("");
-	CString convertedLine = _T("Dateiname: ");
+	CString convertedLine = _T("PARTNO / ");
 	int i = 0;
 	//wandelt den String in ein Array um jedes Wort hat eine eigene Adresse
 	while (AfxExtractSubString(token, line, i, ' ')) {
@@ -550,10 +573,10 @@ void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 	double result = sqrt(((cX-ccX)*(cX - ccX))+((cY - ccY) * (cY - ccY)));//?
 
 	CString rotationDirection;
-	if (lineC.Find(_T("DR+")) != -1) {
+	if (lineC.Find(_T("DR+")) != -1 || lineC.Find(_T("DR +")) != -1) {
 		rotationDirection = _T("1.0");
 	}
-	else if (lineC.Find(_T("DR-")) != -1) {
+	else if (lineC.Find(_T("DR-")) != -1 || lineC.Find(_T("DR -")) != -1) {
 		rotationDirection = _T("-1.0");
 	}
 	
@@ -611,7 +634,7 @@ void CMCDtoNCLDlg::findMovement(CString line) {
 /// @param [line] enthält die gesamte MCD Zeile
 /// @param [c] das gesuchte Zeichen kann entweder X,Y oder Z sein
 /// @param [index] der Index des Strings an dem die Schleife weiterläuft 
-/// @param [g_coordinate] die Globale Koordinatenvariable g_x,g_y oder g_z
+/// @param [&g_coordinate] die Adresse einer Globalen Koordinatenvariable g_x,g_y oder g_z
 void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_coordinate) {
 	if (line.GetAt(index) == c && (line.GetAt(index + 1) == '+' || line.GetAt(index + 1) == '-')) {
 		g_coordinate = _T("");
@@ -716,7 +739,7 @@ void CMCDtoNCLDlg::openSubprogramPathName(CString path) {
 /// </summary>
 void CMCDtoNCLDlg::OnBnClickedButtonSave()
 {
-	CFileDialog cFileDialog(false, _T("mpf"), m_FILE_NAME, OFN_OVERWRITEPROMPT, _T("mpf-files (*.mpf)|*.mpf;|text-Files(*.txt)|*.txt;|"));
+	CFileDialog cFileDialog(false, _T("mpf"), m_FILE_NAME, OFN_OVERWRITEPROMPT, _T("ncl-file (*.ncl)|*.ncl;|text-Files(*.txt)|*.txt;|"));
 	int iId;
 	iId = (int)cFileDialog.DoModal();
 	bool bOk = true;
