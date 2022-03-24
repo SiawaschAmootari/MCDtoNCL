@@ -311,18 +311,21 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 	g_y = _T("+0.0");
 	g_z = _T("+0.0");
 	bool foundFirstFeatno = false;
+	bool foundMainProgram = false;
 	CFileStatus fileStatus;
-	//CFile::GetStatus(m_sFilecontent, fileStatus);
-	//m_sFileConverted.SetSize();
 	CString sFileConverted = _T("");
+	m_sFileConverted.Add(_T("$$*          Pro/CLfile  Version 7.0 - 7.0.7.0"));
+
 	BeginWaitCursor();
+	int commentCycleIndex = 0;
 	for (int i = 0; i < m_sFilecontent.GetSize(); i++) {
-		if (m_sFilecontent.GetAt(i).Find(_T("M91")) == -1) {
-			if (m_sFilecontent.GetAt(i).Find(_T("BEGIN")) != -1) {
+		if (m_sFilecontent.GetAt(i).Find(_T("M91")) == -1 ) {
+			if (foundMainProgram==false && m_sFilecontent.GetAt(i).Find(_T("BEGIN")) != -1) {
 				findProgramName(m_sFilecontent.GetAt(i));
+				foundMainProgram = true;
 			}
 			else if (m_sFilecontent.GetAt(i).Find(_T(";")) != -1 && m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) == -1) {
-				findComment(m_sFilecontent.GetAt(i));
+				//findComment(m_sFilecontent.GetAt(i));
 			}
 			else if (m_sFilecontent.GetAt(i).Find(_T("TOLERANZ")) != -1) {
 				g_conversionHistory.Add(m_sFilecontent.GetAt(i));
@@ -343,6 +346,7 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 					m_sFileConverted.Add(_T("MACHIN / UNCX01, 1")); //	 Wird nur im ersten Zyklus angezeigt
 					m_sFileConverted.Add(_T("UNITS / MM"));        //    ""                             ""
 				}
+				commentCycle(commentCycleIndex);
 				findToolCycle(i);
 				foundFirstFeatno = true;
 			}
@@ -354,9 +358,10 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 				m_sFileConverted.Add(_T("SPINDL / OFF"));
 			}
 			else {
-				m_sFileConverted.Add(_T("PPRINT / ??? ") + m_sFilecontent.GetAt(i));
+				//m_sFileConverted.Add(_T("PPRINT / ??? ") + m_sFilecontent.GetAt(i));
 			}
 		}
+
 	}
 	m_sFileConverted.Add(_T("$$->END /"));
 	m_sFileConverted.Add(_T("FINI"));
@@ -402,8 +407,7 @@ void CMCDtoNCLDlg::findToolCycle(int index) {
 		}
 	}
 
-	//M3 Clockwise
-	//M4 Counter Clockwise
+
 	for (int i = startIndex; i <= endIndex; i++) {
 		if (m_sFilecontent.GetAt(i).Find(_T("M3")) != -1) {
 			clockwiseDirection = _T(",  CLW");
@@ -511,8 +515,31 @@ void CMCDtoNCLDlg::findProgramName(CString line) {
 	}
 	
 	convertedLine.Append(splittLine.GetAt(4));
+	m_sFileConverted.Add(_T("$$_> MFGNO /") + convertedLine);
 	m_sFileConverted.Add(convertedLine);
 	g_conversionHistory.Add(line + _T(" ----> ") + convertedLine);
+}
+
+void CMCDtoNCLDlg::commentCycle(int& index) {
+	int counter = 0;
+	for (int i = index; i < m_sFilecontent.GetSize(); i++) {
+		if (m_sFilecontent.GetAt(i).Find(_T(";")) != -1 && m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) == -1) {
+			findComment(m_sFilecontent.GetAt(i));
+		}
+		else if (m_sFilecontent.GetAt(i).Find(_T("TOOL CALL")) != -1 && m_sFilecontent.GetAt(i).Find(_T(";")) != -1) {
+			//index = i+1;
+			counter++;
+		}
+		if (counter == 2) {
+			index = i + 1;
+			break;
+		}
+	}
+
+	for (int i = 0; i < g_pprintList.GetSize(); i++) {
+		m_sFileConverted.Add(g_pprintList.GetAt(i));
+	}
+	g_pprintList.RemoveAll();
 }
 
 /// <summary>
@@ -520,7 +547,7 @@ void CMCDtoNCLDlg::findProgramName(CString line) {
 /// </summary>
 /// @param [line] enthält den gefilterten String aus dem MCD
 void CMCDtoNCLDlg::findComment(CString line) {
-	CString convertedLine = _T("PPRINT / ");
+	CString convertedLine = _T("PPRINT /");
 	bool foundSemicolonInLine = false;
 
 	for (int i = 0; i < line.GetLength(); i++) {
@@ -531,7 +558,7 @@ void CMCDtoNCLDlg::findComment(CString line) {
 			foundSemicolonInLine = true;
 		}
 	}
-	m_sFileConverted.Add(convertedLine);
+	g_pprintList.Add(convertedLine);
 	g_conversionHistory.Add(line + _T(" ----> ") + convertedLine);
 }
 
@@ -603,12 +630,13 @@ void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 void CMCDtoNCLDlg::findMovement(CString line) {
 	
 		CString convertedLine = _T("GOTO / ");
-
+		CString fedRatLine = _T("");
 		for (int i = 0; i < line.GetLength(); i++) {
 			//Refactor fillXYZ
 			fillCoordinates(line, 'X', i, g_x);
 			fillCoordinates(line, 'Y', i, g_y);
 			fillCoordinates(line, 'Z', i, g_z);
+			findFedRat(line,i, g_fedRat);
 		}
 		
 		addDecimalPlace(g_x);
@@ -621,9 +649,16 @@ void CMCDtoNCLDlg::findMovement(CString line) {
 		convertedLine.Append(_T(", "));
 		convertedLine.Append(g_z);
 		
+		if (isdigit(g_fedRat.GetAt(0))) {
+			fedRatLine = _T("FEDRAT / ") + g_fedRat + _T(", MMPM");
+			m_sFileConverted.Add(fedRatLine);
+			g_fedRat = _T("");
+		}
+
 		if (line.Find(_T("F MAX")) != -1 || line.Find(_T("FMAX")) != -1) {
 			m_sFileConverted.Add(_T("RAPID"));
 		}
+
 		m_sFileConverted.Add(convertedLine);
 		g_conversionHistory.Add(line + _T(" ----> ") + convertedLine);
 }
@@ -647,6 +682,21 @@ void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_c
 			}
 		}
 		g_coordinate.Replace(',', '.');
+	}
+}
+
+void CMCDtoNCLDlg::findFedRat(CString line, int index, CString& g_fedRat) {
+	if ( line.GetAt(index)=='F' && line.Find(_T("MAX")) == -1) {
+		g_fedRat = _T("");
+		for (int j = index + 1; j < line.GetLength(); j++) {
+			if (line.GetAt(j) != ' ') {
+				g_fedRat.AppendChar(line.GetAt(j));
+			}
+			else {
+				break;
+			}
+		}
+		addDecimalPlace(g_fedRat);
 	}
 }
 
@@ -683,7 +733,7 @@ void CMCDtoNCLDlg::findTolerance(CString line) {
 			foundT = true;
 		}
 	}
-	m_sFileConverted.Add(convertedLine);
+	g_pprintList.Add(convertedLine);
 	g_conversionHistory.Add(line + _T(" ----> ") + convertedLine);
 }
 

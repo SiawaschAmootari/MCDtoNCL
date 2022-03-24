@@ -39,6 +39,7 @@ private:
 	CStringArray m_sFilecontent;
 	CStringArray m_sFileConverted;
 	CStringArray g_conversionHistory;
+	CStringArray g_pprintList;
 
 	CEdit m_EDIT_FILE_OUTPUT;
 	CEdit m_EDIT_FILE_INPUT;
@@ -46,11 +47,13 @@ private:
 	CString g_x;
 	CString g_y;
 	CString g_z;
+	CString g_fedRat;
 	CString g_diameter;
 	CString g_convertedLoadToolLine;
 	CString g_convertedSpindlLine;
 	CString g_sFilePath;
 	CString m_FILE_NAME;
+
 
 	void findSubprogramPathName(CString path);
 	void findProgramName(CString line);
@@ -64,8 +67,10 @@ private:
 	
 	void OpenNewFile();
 	void fillCoordinates(CString line, char c, int index, CString& g_coordinate);
+	void findFedRat(CString line,int index, CString& g_fedRat);
 	void addDecimalPlace(CString& line);
 	void openSubprogramPathName(CString path);
+	void commentCycle(int& index);
 
 public:
 	afx_msg void OnBnClickedButtonSave();
