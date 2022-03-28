@@ -307,19 +307,20 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 {
 	//Default Werte für X,Y und Z werden gesetzt für den fall das die erste 
 	//Bewegungszeile ein oder zwei Koordinaten auslässt
-	g_x = _T(" +0.0");
-	g_y = _T("+0.0");
-	g_z = _T("+0.0");
+	g_x = _T(" 0.0");
+	g_y = _T("0.0");
+	g_z = _T("0.0");
 	bool foundFirstFeatno = false;
 	bool foundMainProgram = false;
 	CFileStatus fileStatus;
 	CString sFileConverted = _T("");
 	m_sFileConverted.Add(_T("$$*          Pro/CLfile  Version 7.0 - 7.0.7.0"));
-
+	CString ncFolge;
+	int ncFolgeCounter = 0;
 	BeginWaitCursor();
 	int commentCycleIndex = 0;
 	for (int i = 0; i < m_sFilecontent.GetSize(); i++) {
-		if (m_sFilecontent.GetAt(i).Find(_T("M91")) == -1 ) {
+		if (m_sFilecontent.GetAt(i).Find(_T("M91")) == -1) {
 			if (foundMainProgram==false && m_sFilecontent.GetAt(i).Find(_T("BEGIN")) != -1) {
 				findProgramName(m_sFilecontent.GetAt(i));
 				foundMainProgram = true;
@@ -345,6 +346,14 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 				if (foundFirstFeatno == false) {
 					m_sFileConverted.Add(_T("MACHIN / UNCX01, 1")); //	 Wird nur im ersten Zyklus angezeigt
 					m_sFileConverted.Add(_T("UNITS / MM"));        //    ""                             ""
+					ncFolgeCounter++;
+					ncFolge.Format(_T("%d"), ncFolgeCounter);
+					m_sFileConverted.Add(_T("PPRINT / NC SEQUENCE NAME FOLGE ") + ncFolge);
+				}
+				else {
+					ncFolgeCounter++;
+					ncFolge.Format(_T("%d"), ncFolgeCounter);
+					m_sFileConverted.Add(_T("PPRINT / NC SEQUENCE NAME FOLGE ") + ncFolge);
 				}
 				commentCycle(commentCycleIndex);
 				findToolCycle(i);
@@ -361,12 +370,34 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 				//m_sFileConverted.Add(_T("PPRINT / ??? ") + m_sFilecontent.GetAt(i));
 			}
 		}
+		else if(m_sFilecontent.GetAt(i).Find(_T("M91")) != -1 && (m_sFilecontent.GetAt(i+1).Find(_T("L X")) != -1 || m_sFilecontent.GetAt(i+1).Find(_T("L Y")) != -1 || m_sFilecontent.GetAt(i+1).Find(_T("L Z")) != -1)) {
+			i++;
+		}
 
 	}
-	m_sFileConverted.Add(_T("$$->END /"));
+	m_sFileConverted.Add(_T("$$-> END /"));
 	m_sFileConverted.Add(_T("FINI"));
 	theApp.ArrToVal(m_sFileConverted, sFileConverted);
 	m_EDIT_FILE_OUTPUT.SetWindowText(sFileConverted);
+
+	/*for (int i = 0; i < 10; i++) {
+		CString token = _T("");
+		//c.Format(_T("%d"), m_sFilecontent.GetAt(i).GetLength());
+		CStringArray splittLine;
+		while (AfxExtractSubString(token, m_sFilecontent.GetAt(i), i, ' ')) {
+			splittLine.Add(token);
+			i++;
+		}
+		CString c;
+		c.Format(_T("%d"), splittLine.GetSize());
+		m_LIST_MESSAGES.AddString(c);
+
+	}*/
+
+	
+	CString len;
+	len.Format(_T("%d"), g_toolList.GetSize());
+	m_LIST_MESSAGES.AddString(len);
 	EndWaitCursor();
 }
 
@@ -396,7 +427,7 @@ void CMCDtoNCLDlg::findToolCycle(int index) {
 		if (toolCallCount == 1 && foundStart == false) {
 			startIndex = i;
 			foundStart = true;
-			m_LIST_MESSAGES.AddString(m_sFilecontent.GetAt(i));
+			//m_LIST_MESSAGES.AddString(m_sFilecontent.GetAt(i));
 			findToolCall(m_sFilecontent.GetAt(i));
 		}
 		if (toolCallCount == 2) {
@@ -439,11 +470,14 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 	CString toolNameNumber = _T("");
 	CString spindlNumber = _T("");
 	CString compareLine = _T("");
+	CString toolInfo = _T("");
 	g_diameter = _T("");
+	g_radius = _T("");
 	bool foundFirstDigit = false;
 	bool firstSpaceAfterDigit = false;
 	bool foundSpindl = false;
 	bool foundDiameter = false;
+	bool foundRaidus = false;
 	g_convertedLoadToolLine = _T("");
 
 	for (int i = 0; i < line.GetLength(); i++) {
@@ -458,7 +492,7 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 			toolNameNumber.AppendChar(line.GetAt(i));
 			foundFirstDigit = true;
 		}
-		if (line.GetAt(i) == 'S') {
+		if (line.GetAt(i) == 'S') { //-------> SPINDL
 			foundSpindl = true;
 		}
 		if (foundSpindl == true && isdigit(line.GetAt(i))) {
@@ -474,13 +508,48 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 		if (line.GetAt(i)=='D') {
 			foundDiameter = true;
 		}
+		if (foundRaidus == true && line.GetAt(i)==' ') {
+			foundRaidus = false;
+		}
+		if (foundRaidus==true) {
+			g_radius.AppendChar(line.GetAt(i));
+		}
+		if (line.GetAt(i) == 'R') {
+			foundRaidus = true;
+		}
+
 	}
+
+	toolInfo = g_diameter + g_radius;
+	bool foundToolInfo = false;
+	for (int i = 0; i < g_toolList.GetSize(); i++) {
+		if (toolInfo == g_toolList.GetAt(i)) {
+			foundToolInfo = true;
+			g_toolListIndex = i + 1;
+		}
+	}
+
+	if (foundToolInfo == false) {
+		g_toolList.Add(toolInfo);
+	}
+	else {
+		g_toolListIndex = g_toolList.GetSize() + 1;
+		foundToolInfo = false;
+	}
+
+	CString loadToolNr;
+	loadToolNr.Format(_T("%d"), g_toolListIndex);
+
 
 	addDecimalPlace(spindlNumber);
 	addDecimalPlace(g_diameter);
+	removeLeadingZero(g_diameter);
 	g_convertedSpindlLine = _T("SPINDL / RPM, ") + spindlNumber;
-	m_LIST_MESSAGES.AddString(g_convertedSpindlLine);
-	g_convertedLoadToolLine = _T("LOADTL / ") + toolNameNumber;
+	//m_LIST_MESSAGES.AddString(g_convertedSpindlLine);
+	//m_LIST_MESSAGES.AddString(toolInfo);
+	//g_convertedLoadToolLine = _T("LOADTL / ") + toolNameNumber;
+	g_convertedLoadToolLine = _T("LOADTL / ") +loadToolNr ;
+	
 }
 
 /// <summary>
@@ -489,12 +558,12 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 /// @param [line] es wird die gefilterte Zeile übergeben die ein M8 oder ein M9 beinhaltet</param>
 void CMCDtoNCLDlg::findCooling(CString line) {
 	if (line.Find(_T("M8")) != -1) {
-		m_sFileConverted.Add(_T("COOLNT/ON"));
-		g_conversionHistory.Add(line + _T(" ----> ") + _T("COOLNT/ON"));
+		m_sFileConverted.Add(_T("COOLNT / ON"));
+		g_conversionHistory.Add(line + _T(" ----> ") + _T("COOLNT / ON"));
 	}
 	else  if (line.Find(_T("M9")) != -1) {
-		m_sFileConverted.Add(_T("COOLNT/OFF"));
-		g_conversionHistory.Add(line + _T(" ----> ") + _T("COOLNT/OFF"));
+		m_sFileConverted.Add(_T("COOLNT / OFF"));
+		g_conversionHistory.Add(line + _T(" ----> ") + _T("COOLNT / OFF"));
 	}
 }
 
@@ -515,11 +584,18 @@ void CMCDtoNCLDlg::findProgramName(CString line) {
 	}
 	
 	convertedLine.Append(splittLine.GetAt(4));
-	m_sFileConverted.Add(_T("$$_> MFGNO /") + convertedLine);
+	m_sFileConverted.Add(_T("$$-> MFGNO /") + splittLine.GetAt(4));
 	m_sFileConverted.Add(convertedLine);
 	g_conversionHistory.Add(line + _T(" ----> ") + convertedLine);
 }
 
+/// <summary>
+/// Ähnlich wie ToolCycle findet die Methode alle Kommentare die innerhalb eines 
+/// ToolCycles vorkommen. Diese werden in der Globalen Variable g_pprintList gespeichert und
+/// werden dann vor dem Zyklus dann ausgegeben.
+/// </summary>
+/// @param [&index] enthält den aktuellen index des m_sFilecontent, das Programm weiß damit in welcher Zeile es aktuell ist
+/// und muss nicht die Suche vom Anfang der Liste wieder starten.
 void CMCDtoNCLDlg::commentCycle(int& index) {
 	int counter = 0;
 	for (int i = index; i < m_sFilecontent.GetSize(); i++) {
@@ -549,17 +625,23 @@ void CMCDtoNCLDlg::commentCycle(int& index) {
 void CMCDtoNCLDlg::findComment(CString line) {
 	CString convertedLine = _T("PPRINT /");
 	bool foundSemicolonInLine = false;
-
+	bool foundOtherChar = false;
 	for (int i = 0; i < line.GetLength(); i++) {
 		if (foundSemicolonInLine == true) {
 			convertedLine.AppendChar(line.GetAt(i));
 		}
+		if (foundSemicolonInLine == true && line.GetAt(i) != ' ') {
+			foundOtherChar = true;
+		}
 		if (line.GetAt(i) == ';') {
 			foundSemicolonInLine = true;
 		}
+		
 	}
-	g_pprintList.Add(convertedLine);
-	g_conversionHistory.Add(line + _T(" ----> ") + convertedLine);
+	if (foundOtherChar == true) {
+		g_pprintList.Add(convertedLine);
+		g_conversionHistory.Add(line + _T(" ----> ") + convertedLine);
+	}
 }
 
 /// <summary>
@@ -570,10 +652,9 @@ void CMCDtoNCLDlg::findComment(CString line) {
 void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 	//Zeile für CC
 	for (int i = 0; i < lineCC.GetLength(); i++) {
-		//Refactor fillXYZ
+		//Refactor fillCoordinate
 		fillCoordinates(lineCC, 'X', i, g_x);
 		fillCoordinates(lineCC, 'Y', i, g_y);
-		
 	}
 
 	addDecimalPlace(g_x);
@@ -584,12 +665,12 @@ void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 	//Zeile für C
 	CString lineX = g_x;
 	CString lineY = g_y;
+	CString gotoLine = _T("");
 
 	for (int i = 0; i < lineC.GetLength(); i++) {
-		//Refactor fillXYZ
+		//Refactor fillCoordinate
 		fillCoordinates(lineC, 'X', i, g_x);
 		fillCoordinates(lineC, 'Y', i, g_y);
-		
 	}
 
 	addDecimalPlace(g_x);
@@ -614,12 +695,20 @@ void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 	CString convertedLineTwo;
 	convertedLineOne = _T("CIRCLE / ") +lineX+ _T(", ")+lineY+_T(", ") + g_z+_T(", $");
 	convertedLineTwo = _T("0.0000000000, 0.0000000000, ") + rotationDirection + _T(", ") + resultString;
-	
+	gotoLine = _T("GOTO \ ") + g_x + _T(", ") + g_y + _T(", ") + g_z;
+
 	m_sFileConverted.Add(convertedLineOne);
 	m_sFileConverted.Add(convertedLineTwo);
+	m_sFileConverted.Add(gotoLine);
 
 	g_conversionHistory.Add(lineCC + _T(" ----> ") + convertedLineOne);
 	g_conversionHistory.Add(lineC + _T(" ----> ") + convertedLineTwo);
+}
+
+void CMCDtoNCLDlg::removeLeadingZero(CString& value) {
+	if (value.GetAt(0) == '0') {
+		value.Delete(0,1);
+	}
 }
 
 /// <summary>
@@ -632,7 +721,7 @@ void CMCDtoNCLDlg::findMovement(CString line) {
 		CString convertedLine = _T("GOTO / ");
 		CString fedRatLine = _T("");
 		for (int i = 0; i < line.GetLength(); i++) {
-			//Refactor fillXYZ
+			//Refactor fillCoordinates
 			fillCoordinates(line, 'X', i, g_x);
 			fillCoordinates(line, 'Y', i, g_y);
 			fillCoordinates(line, 'Z', i, g_z);
@@ -671,6 +760,7 @@ void CMCDtoNCLDlg::findMovement(CString line) {
 /// @param [index] der Index des Strings an dem die Schleife weiterläuft 
 /// @param [&g_coordinate] die Adresse einer Globalen Koordinatenvariable g_x,g_y oder g_z
 void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_coordinate) {
+	
 	if (line.GetAt(index) == c && (line.GetAt(index + 1) == '+' || line.GetAt(index + 1) == '-')) {
 		g_coordinate = _T("");
 		for (int j = index + 1; j < line.GetLength(); j++) {
@@ -683,8 +773,18 @@ void CMCDtoNCLDlg::fillCoordinates(CString line, char c, int index, CString& g_c
 		}
 		g_coordinate.Replace(',', '.');
 	}
+	if (g_coordinate.Find('+') != -1) {
+		g_coordinate.Delete(0, 1);
+	}
 }
 
+/// <summary>
+/// Findet den Wert für "FEDRAT /" dieser Wert wird Ähnlich wie bei fillCoordinates ermittelt.
+/// </summary>
+/// @param [line] enthält die gesamte MCD Zeile
+/// @param [index] der Index des Strings an dem die Schleife weiterläuft 
+/// @param [&g_coordinate] die Adresse einer Globalen Koordinatenvariable g_x,g_y oder g_z
+/// @param [g_fedRat] die globale Variable g_fedrat
 void CMCDtoNCLDlg::findFedRat(CString line, int index, CString& g_fedRat) {
 	if ( line.GetAt(index)=='F' && line.Find(_T("MAX")) == -1) {
 		g_fedRat = _T("");

@@ -40,6 +40,7 @@ private:
 	CStringArray m_sFileConverted;
 	CStringArray g_conversionHistory;
 	CStringArray g_pprintList;
+	CStringArray g_toolList;
 
 	CEdit m_EDIT_FILE_OUTPUT;
 	CEdit m_EDIT_FILE_INPUT;
@@ -49,6 +50,8 @@ private:
 	CString g_z;
 	CString g_fedRat;
 	CString g_diameter;
+	CString g_radius;
+	int g_toolListIndex;
 	CString g_convertedLoadToolLine;
 	CString g_convertedSpindlLine;
 	CString g_sFilePath;
@@ -71,6 +74,7 @@ private:
 	void addDecimalPlace(CString& line);
 	void openSubprogramPathName(CString path);
 	void commentCycle(int& index);
+	void removeLeadingZero(CString& value);
 
 public:
 	afx_msg void OnBnClickedButtonSave();
