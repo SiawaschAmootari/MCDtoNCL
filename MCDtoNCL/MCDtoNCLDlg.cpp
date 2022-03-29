@@ -451,8 +451,8 @@ void CMCDtoNCLDlg::findToolCycle(int index) {
 	m_sFileConverted.Add(g_convertedLoadToolLine);
 	m_sFileConverted.Add(_T("$$-> CUTTER / ")+g_diameter);
 	m_sFileConverted.Add(_T("$$-> CSYS / 1.0000000000, 0.0000000000, 0.0000000000, 0.0000000000,  $")); // Hardcoded 3 Ax
-	m_sFileConverted.Add(_T("		    0.0000000000, 1.0000000000, 0.0000000000, 0.0000000000,  $")); // ""            ""
-	m_sFileConverted.Add(_T("		    0.0000000000, 0.0000000000, 1.0000000000, 0.0000000000"));	  //  ""			""	
+	m_sFileConverted.Add(_T("            0.0000000000, 1.0000000000, 0.0000000000, 0.0000000000,  $")); // ""            ""
+	m_sFileConverted.Add(_T("            0.0000000000, 0.0000000000, 1.0000000000, 0.0000000000"));	  //  ""			""	
 	m_sFileConverted.Add(g_convertedSpindlLine);
 	g_conversionHistory.Add(_T(" ----> ") + g_convertedLoadToolLine);
 	g_conversionHistory.Add(_T(" ----> ") + g_convertedSpindlLine);
@@ -505,7 +505,7 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 		if (foundDiameter == true) {
 			g_diameter.AppendChar(line.GetAt(i));
 		}
-		if (line.GetAt(i)=='D') {
+		if (line.GetAt(i)=='D') { //--------->DIAMETER
 			foundDiameter = true;
 		}
 		if (foundRaidus == true && line.GetAt(i)==' ') {
@@ -514,7 +514,7 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 		if (foundRaidus==true) {
 			g_radius.AppendChar(line.GetAt(i));
 		}
-		if (line.GetAt(i) == 'R') {
+		if (line.GetAt(i) == 'R') { //--------->RADIUS
 			foundRaidus = true;
 		}
 
@@ -545,9 +545,6 @@ void CMCDtoNCLDlg::findToolCall(CString line) {
 	addDecimalPlace(g_diameter);
 	removeLeadingZero(g_diameter);
 	g_convertedSpindlLine = _T("SPINDL / RPM, ") + spindlNumber;
-	//m_LIST_MESSAGES.AddString(g_convertedSpindlLine);
-	//m_LIST_MESSAGES.AddString(toolInfo);
-	//g_convertedLoadToolLine = _T("LOADTL / ") + toolNameNumber;
 	g_convertedLoadToolLine = _T("LOADTL / ") +loadToolNr ;
 	
 }
@@ -705,6 +702,10 @@ void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 	g_conversionHistory.Add(lineC + _T(" ----> ") + convertedLineTwo);
 }
 
+/// <summary>
+/// Diese Methode löscht führende Nullen  08.0 -> 8.0
+/// </summary>
+/// @param [value] enthält den gefilterten String welche eine Dezimalzahl darstellt
 void CMCDtoNCLDlg::removeLeadingZero(CString& value) {
 	if (value.GetAt(0) == '0') {
 		value.Delete(0,1);
@@ -739,7 +740,7 @@ void CMCDtoNCLDlg::findMovement(CString line) {
 		convertedLine.Append(g_z);
 		
 		if (isdigit(g_fedRat.GetAt(0))) {
-			fedRatLine = _T("FEDRAT / ") + g_fedRat + _T(", MMPM");
+			fedRatLine = _T("FEDRAT / ") + g_fedRat + _T(",  MMPM");
 			m_sFileConverted.Add(fedRatLine);
 			g_fedRat = _T("");
 		}
