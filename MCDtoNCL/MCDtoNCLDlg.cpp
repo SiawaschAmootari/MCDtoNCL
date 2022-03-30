@@ -348,12 +348,12 @@ void CMCDtoNCLDlg::OnBnClickedButtonConvert()
 					m_sFileConverted.Add(_T("UNITS / MM"));        //    ""                             ""
 					ncFolgeCounter++;
 					ncFolge.Format(_T("%d"), ncFolgeCounter);
-					m_sFileConverted.Add(_T("PPRINT / NC SEQUENCE NAME FOLGE ") + ncFolge);
+					m_sFileConverted.Add(_T("PPRINT / NC SEQUENCE NAME : FOLGE ") + ncFolge);
 				}
 				else {
 					ncFolgeCounter++;
 					ncFolge.Format(_T("%d"), ncFolgeCounter);
-					m_sFileConverted.Add(_T("PPRINT / NC SEQUENCE NAME FOLGE ") + ncFolge);
+					m_sFileConverted.Add(_T("PPRINT / NC SEQUENCE NAME : FOLGE ") + ncFolge);
 				}
 				commentCycle(commentCycleIndex);
 				findToolCycle(i);
@@ -692,7 +692,7 @@ void CMCDtoNCLDlg::findCircle(CString lineCC,CString lineC) {
 	CString convertedLineTwo;
 	convertedLineOne = _T("CIRCLE / ") +lineX+ _T(", ")+lineY+_T(", ") + g_z+_T(", $");
 	convertedLineTwo = _T("0.0000000000, 0.0000000000, ") + rotationDirection + _T(", ") + resultString;
-	gotoLine = _T("GOTO \ ") + g_x + _T(", ") + g_y + _T(", ") + g_z;
+	gotoLine = _T("GOTO / ") + g_x + _T(", ") + g_y + _T(", ") + g_z;
 
 	m_sFileConverted.Add(convertedLineOne);
 	m_sFileConverted.Add(convertedLineTwo);
